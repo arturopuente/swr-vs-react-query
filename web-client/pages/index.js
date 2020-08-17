@@ -1,13 +1,42 @@
 import Head from "next/head";
 import React from "react";
 import { useVirtual } from "react-virtual";
+import { useSWRInfinite } from "swr";
 import styles from "../styles/Home.module.css";
 
-function List(items = []) {
+// SWR
+
+const fetcher = (...args) => fetch(...args).then(res => res.json());
+
+const getKey = (pageIndex, previousPageData) => {
+  if (previousPageData && !previousPageData.data.length) return null;
+  return `http://localhost:5000/products?page[number]=${pageIndex +
+    1}&page[size]=10`;
+};
+
+function SWRList() {
+  const { data, size, setSize } = useSWRInfinite(getKey, fetcher);
+  if (!data) return "loading";
+
+  let items = [];
+  for (let i = 0; i < data.length; i++) {
+    items = items.concat(data[i].data);
+  }
+
+  return (
+    <div>
+      <p>{items.length} products listed</p>
+      <List products={items} />
+      <button onClick={() => setSize(size + 1)}>Load More</button>
+    </div>
+  );
+}
+
+function List({ products = [] }) {
   const parentRef = React.useRef();
 
   const rowVirtualizer = useVirtual({
-    size: 1000,
+    size: products.length,
     parentRef,
     estimateSize: React.useCallback(() => 35, [])
   });
@@ -35,7 +64,9 @@ function List(items = []) {
               transform: `translateY(${virtualRow.start}px)`
             }}
           >
-            Row {virtualRow.index}
+            {products[virtualRow.index].id} &mdash;&nbsp;
+            {products[virtualRow.index].attributes.name} &mdash;&nbsp;
+            {products[virtualRow.index].attributes.price}
           </div>
         ))}
       </div>
@@ -54,15 +85,15 @@ export default function Home() {
       <main className={styles.main}>
         <section>
           <h1 className={styles.title}>SWR</h1>
-          <p className={styles.description}>
-            <List />
-          </p>
+          <div className={styles.description}>
+            <SWRList />
+          </div>
         </section>
         <section>
           <h1 className={styles.title}>React-Query</h1>
-          <p className={styles.description}>
+          <div className={styles.description}>
             <List />
-          </p>
+          </div>
         </section>
       </main>
     </div>
