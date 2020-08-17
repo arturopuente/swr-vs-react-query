@@ -2,6 +2,7 @@ import Head from "next/head";
 import React from "react";
 import { useVirtual } from "react-virtual";
 import { useSWRInfinite } from "swr";
+import { useInfiniteQuery } from "react-query";
 import styles from "../styles/Home.module.css";
 
 // SWR
@@ -28,6 +29,60 @@ function SWRList() {
       <p>{items.length} products listed</p>
       <List products={items} />
       <button onClick={() => setSize(size + 1)}>Load More</button>
+    </div>
+  );
+}
+
+// React Query
+
+function RQList() {
+  const fetchProducts = (key, cursor = 1) =>
+    fetch(
+      `http://localhost:5000/products?page[number]=${cursor}&page[size]=10`
+    ).then(res => res.json());
+
+  const {
+    status,
+    data,
+    isFetching,
+    isFetchingMore,
+    fetchMore,
+    error,
+    canFetchMore
+  } = useInfiniteQuery("products", fetchProducts, {
+    getFetchMore: (lastGroup, allGroups) => {
+      return allGroups.length + 1;
+    }
+  });
+
+  let items = [];
+  if (data) {
+    data.map(group => {
+      items = items.concat(group.data);
+    });
+  }
+
+  return status === "loading" ? (
+    <p>Loading...</p>
+  ) : status === "error" ? (
+    <p>Error: {error.message}</p>
+  ) : (
+    <div>
+      <p>{items.length} products listed</p>
+      <List products={items} />
+      <div>
+        <button
+          onClick={() => fetchMore()}
+          disabled={!canFetchMore || isFetchingMore}
+        >
+          {isFetchingMore
+            ? "Loading more..."
+            : canFetchMore
+            ? "Load More"
+            : "Nothing more to load"}
+        </button>
+      </div>
+      <div>{isFetching && !isFetchingMore ? "Fetching..." : null}</div>
     </div>
   );
 }
@@ -92,7 +147,7 @@ export default function Home() {
         <section>
           <h1 className={styles.title}>React-Query</h1>
           <div className={styles.description}>
-            <List />
+            <RQList />
           </div>
         </section>
       </main>
